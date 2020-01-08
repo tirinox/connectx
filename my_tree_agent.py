@@ -36,36 +36,42 @@ def check_game_over(board: np.ndarray, in_a_row):
 
 
 def calculate_score_for_player(board: np.ndarray, player, in_a_row):
-    def inner(board: np.ndarray, player):
+    def inner(board: np.ndarray, player, rotated=True):
+
+        board = board.T if rotated else board
         rows, cols = board.shape
+        normal = not rotated
         score = 0
 
-        def update_score(score, frees, ours):
-            if ours > 0 and frees + ours >= in_a_row:
-                score += 10 ** (ours - 1)
-            return score
+        support_row = [True] * cols
 
-        for r in range(rows):
-            row = board[r]
-            n1 = np.count_nonzero(row == player)
-            if n1 == 0:
-                continue
+        for row_index in reversed(range(rows)):
+            row = board[row_index]
 
-            frees, ours = 0, 0
-            for c in range(cols):
-                if row[c] == 0:
-                    frees += 1
-                elif row[c] == player:
-                    ours += 1
-                else:
-                    score = update_score(score, frees, ours)
-                    ours = frees = 0
+            for c in range(cols - in_a_row + 1):
+                my, empty, supports = 0, 0, 0
+                for k in range(c, in_a_row + c):
+                    if row[k] == player:
+                        my += 1
+                    elif row[k] == 0:
+                        empty += 1
+                    else:
+                        break
+                    if support_row[k]:
+                        supports += 1
 
-            score = update_score(score, frees, ours)
+                if my + empty == in_a_row:
+                    delta = 10 ** (my - 1)
+                    if normal and supports < in_a_row:
+                        delta //= 2
+                    score += delta
+
+            support_row = row != 0
+
         return score
 
-    return inner(board, player) + inner(board.T, player)
-
+    return inner(board, player, rotated=False) + \
+           inner(board, player, rotated=True)
 
 
 def agent(observation, configuration):
@@ -99,7 +105,10 @@ def test_game_over():
 
 def test_score():
     board = np.array([
-        [1, 0, 1, 1, 2, 1, 1],
+        [0, 0, 0, 0, 0, 2, 0],
+        [1, 1, 2, 1, 0, 1, 0],
+        [2, 1, 1, 2, 1, 1, 0],
+        [1, 2, 1, 1, 2, 1, 1],
     ], dtype=np.uint8)
 
     # print(make_score_not_my(board))
