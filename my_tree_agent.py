@@ -1,4 +1,5 @@
 import numpy as np
+from collections import namedtuple
 
 
 def check_game_over(board: np.ndarray, in_a_row):
@@ -37,7 +38,6 @@ def check_game_over(board: np.ndarray, in_a_row):
 
 def calculate_score_for_player(board: np.ndarray, player, in_a_row):
     def inner(board: np.ndarray, player, rotated=True):
-
         board = board.T if rotated else board
         rows, cols = board.shape
         normal = not rotated
@@ -74,6 +74,50 @@ def calculate_score_for_player(board: np.ndarray, player, in_a_row):
            inner(board, player, rotated=True)
 
 
+Tree = namedtuple('Tree', ('next', 'parent', 'score', 'board'))
+
+
+def grow_tree(root: Tree, my_player, current_player, depth, max_depth=3, in_a_row=4):
+    if depth >= max_depth:
+        return
+
+    board = root.board
+    rows, cols = board.shape
+
+    other_player = 2 if my_player == 1 else 1
+
+    for choice in range(cols):
+        # check choice-column for free space to drop a chip
+        column = board[:, choice]
+        best_row = -1
+        for r in reversed(range(rows)):
+            if column[r] == 0:
+                best_row = r
+                break
+
+        if best_row == -1:
+            continue  # no free scape
+
+        new_board = board.copy()
+        new_board[best_row, choice] = current_player
+
+        winner = check_game_over(new_board, in_a_row)
+        if winner == 0:
+            score = (calculate_score_for_player(new_board, my_player, in_a_row) -
+                     calculate_score_for_player(new_board, other_player, in_a_row))
+        elif winner == my_player:
+            score = +np.inf
+        else:
+            score = -np.inf
+
+        new_node = Tree([], root, score, new_board)
+        root.next.append(new_node)
+
+        if winner == 0:
+            grow_tree(new_node, my_player, 1 if current_player == 2 else 2,
+                      depth + 1, max_depth, in_a_row)
+
+
 def agent(observation, configuration):
     columns = configuration.columns
     rows = configuration.rows
@@ -84,6 +128,12 @@ def agent(observation, configuration):
     mark = observation.mark
 
     current_board = np.array(observation['board'], dtype=np.uint8).reshape((rows, columns))
+
+    tree = Tree([], None, 0, current_board)
+    grow_tree(tree,
+              current_player=mark,
+              my_player=mark,
+              depth=0, max_depth=4, in_a_row=in_a_row)
 
     # return a column to play: [0, configuration.columns)
     return 0
@@ -102,7 +152,6 @@ def test_game_over():
     print(check_game_over(board, 4))
 
 
-
 def test_score():
     board = np.array([
         [0, 0, 0, 0, 0, 2, 0],
@@ -112,8 +161,25 @@ def test_score():
     ], dtype=np.uint8)
 
     # print(make_score_not_my(board))
-    print(calculate_score_for_player(board, 1, in_a_row=4))
+    print(calculate_score_for_player(board, 4, in_a_row=4))
 
 
-test_score()
+def test_grow_tree():
+    board = np.array([
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+    ], dtype=np.uint8)
+
+    tree = Tree([], None, 0, board)
+    grow_tree(tree,
+              current_player=1,
+              my_player=1,
+              depth=0, max_depth=4, in_a_row=4)
+
+    print(tree)
+
+test_grow_tree()
+# test_score()
 # test()
