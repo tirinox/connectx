@@ -118,6 +118,17 @@ def grow_tree(root: Tree, my_player, current_player, depth, max_depth=3, in_a_ro
                       depth + 1, max_depth, in_a_row)
 
 
+def minmax(my_player, tree: Tree):
+    if len(tree.next) == 0:
+        return tree
+    if my_player == 2:
+        sorter = lambda x: minmax(1, x).score
+    else:
+        sorter = lambda x: -(minmax(2, x).score)
+    return sorted(tree.next, key=sorter)[0]
+
+
+
 def agent(observation, configuration):
     columns = configuration.columns
     rows = configuration.rows
