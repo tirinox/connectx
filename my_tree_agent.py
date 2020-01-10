@@ -37,7 +37,7 @@ def check_game_over(board: np.ndarray, in_a_row):
 
 
 def calculate_score_for_player(board: np.ndarray, player, in_a_row):
-    def inner(board: np.ndarray, player, rotated=True):
+    def score_calc_inner(board: np.ndarray, player, rotated=True):
         board = board.T if rotated else board
         rows, cols = board.shape
         normal = not rotated
@@ -70,11 +70,11 @@ def calculate_score_for_player(board: np.ndarray, player, in_a_row):
 
         return score
 
-    return inner(board, player, rotated=False) + \
-           inner(board, player, rotated=True)
+    return score_calc_inner(board, player, rotated=False) + \
+           score_calc_inner(board, player, rotated=True)
 
 
-Tree = namedtuple('Tree', ('next', 'parent', 'score', 'board'))
+Tree = namedtuple('Tree', ('next', 'parent', 'score', 'board', 'choice'))
 
 
 def grow_tree(root: Tree, my_player, current_player, depth, max_depth=3, in_a_row=4):
@@ -84,7 +84,8 @@ def grow_tree(root: Tree, my_player, current_player, depth, max_depth=3, in_a_ro
     board = root.board
     rows, cols = board.shape
 
-    other_player = 2 if my_player == 1 else 1
+    other_player = 1 if current_player == 2 else 2
+    opp_player = 1 if my_player == 2 else 2
 
     for choice in range(cols):
         # check choice-column for free space to drop a chip
@@ -104,27 +105,27 @@ def grow_tree(root: Tree, my_player, current_player, depth, max_depth=3, in_a_ro
         winner = check_game_over(new_board, in_a_row)
         if winner == 0:
             score = (calculate_score_for_player(new_board, my_player, in_a_row) -
-                     calculate_score_for_player(new_board, other_player, in_a_row))
+                     calculate_score_for_player(new_board, opp_player, in_a_row))
         elif winner == my_player:
             score = +np.inf
         else:
             score = -np.inf
 
-        new_node = Tree([], root, score, new_board)
+        new_node = Tree([], root, score, new_board, choice)
         root.next.append(new_node)
 
         if winner == 0:
-            grow_tree(new_node, my_player, 1 if current_player == 2 else 2,
+            grow_tree(new_node, my_player, other_player,
                       depth + 1, max_depth, in_a_row)
 
 
-def minmax(my_player, tree: Tree):
+def minmax(tree: Tree, my_turn=True):
     if len(tree.next) == 0:
-        return tree
-    if my_player == 2:
-        sorter = lambda x: minmax(1, x).score
-    else:
-        sorter = lambda x: -(minmax(2, x).score)
+        return tree  # this is leaf
+
+    k = 1 if my_turn else -1
+    sorter = lambda node: k * minmax(node, not my_turn).score
+
     return sorted(tree.next, key=sorter)[0]
 
 
@@ -140,7 +141,7 @@ def agent(observation, configuration):
 
     current_board = np.array(observation['board'], dtype=np.uint8).reshape((rows, columns))
 
-    tree = Tree([], None, 0, current_board)
+    tree = Tree([], None, 0, current_board, -1)
     grow_tree(tree,
               current_player=mark,
               my_player=mark,
@@ -175,22 +176,46 @@ def test_score():
     print(calculate_score_for_player(board, 4, in_a_row=4))
 
 
+def tree_to_str(tree: Tree, depth=0):
+    r = '--' * depth + f'Node(c={tree.choice}; sc={tree.score:0.1f})\n'
+    for n in tree.next:
+        r += tree_to_str(n, depth + 1)
+    return r
+
+
 def test_grow_tree():
     board = np.array([
         [0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+        [1, 2, 1, 1, 2, 2, 1],
     ], dtype=np.uint8)
 
-    tree = Tree([], None, 0, board)
+    tree = Tree([], None, 0, board, -1)
     grow_tree(tree,
               current_player=1,
               my_player=1,
-              depth=0, max_depth=4, in_a_row=4)
+              depth=0, max_depth=2, in_a_row=4)
 
-    print(tree)
+    print(tree_to_str(tree, 0))
+
+    leaf = minmax(tree)
+    print(leaf.choice)
+
+    while leaf.parent:
+        print(leaf.choice, '->', end='')
+        leaf = leaf.parent
+
+    print(leaf.choice)
+
+
 
 test_grow_tree()
+# import cProfile
+# cProfile.run('test_grow_tree()')
+
+# test_grow_tree()
 # test_score()
 # test()
