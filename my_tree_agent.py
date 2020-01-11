@@ -1,5 +1,6 @@
 import numpy as np
 from collections import namedtuple
+from dataclasses import dataclass
 
 
 def check_game_over(board: np.ndarray, in_a_row):
@@ -74,7 +75,16 @@ def calculate_score_for_player(board: np.ndarray, player, in_a_row):
            score_calc_inner(board, player, rotated=True)
 
 
-Tree = namedtuple('Tree', ('next', 'parent', 'score', 'board', 'choice'))
+@dataclass
+class Tree:
+    next: list
+    parent: 'Tree'
+    score: float
+    board: np.ndarray
+    choice: int
+
+
+# Tree = namedtuple('Tree', ('next', 'parent', 'score', 'board', 'choice'))
 
 
 def grow_tree(root: Tree, my_player, current_player, depth, max_depth=3, in_a_row=4):
@@ -119,15 +129,23 @@ def grow_tree(root: Tree, my_player, current_player, depth, max_depth=3, in_a_ro
                       depth + 1, max_depth, in_a_row)
 
 
-def minmax(tree: Tree, my_turn=True):
-    if len(tree.next) == 0:
-        return tree  # this is leaf
+def pick_best_move(tree: Tree):
+    is_my_turn = True
+    while tree.next:
+        key = lambda n: n.score
+        if is_my_turn:
+            tree = max(tree.next, key=key)
+        else:
+            tree = min(tree.next, key=key)
 
-    k = 1 if my_turn else -1
-    sorter = lambda node: k * minmax(node, not my_turn).score
 
-    return sorted(tree.next, key=sorter)[0]
-
+def pick_best_move_2(tree: Tree, my_turn=True):
+    if not tree.next:
+        return tree
+    else:
+        k = 1 if my_turn else -1
+        sort_key = lambda node: k * pick_best_move_2(node, not my_turn).score
+        return sorted(tree.next, key=sort_key)[0]
 
 
 def agent(observation, configuration):
@@ -138,17 +156,42 @@ def agent(observation, configuration):
 
     # which player I am!
     mark = observation.mark
+    opp = 1 if mark == 2 else 2
 
-    current_board = np.array(observation['board'], dtype=np.uint8).reshape((rows, columns))
+    current_board = np.array(board, dtype=np.uint8).reshape((rows, columns))
 
-    tree = Tree([], None, 0, current_board, -1)
-    grow_tree(tree,
-              current_player=mark,
-              my_player=mark,
-              depth=0, max_depth=4, in_a_row=in_a_row)
+    # tree = Tree([], None, 0, current_board, -1)
+    # grow_tree(tree,
+    #           current_player=mark,
+    #           my_player=mark,
+    #           depth=0, max_depth=4, in_a_row=in_a_row)
+
+    best_choice = -1
+    best_score = -np.inf
+    for choice in range(columns):
+        # check choice-column for free space to drop a chip
+        column = current_board[:, choice]
+        top_row = -1
+        for r in reversed(range(rows)):
+            if column[r] == 0:
+                top_row = r
+                break
+
+        if top_row == -1:
+            continue  # no free space in the column
+
+        new_board = current_board.copy()
+        new_board[top_row, choice] = mark
+
+        score = (calculate_score_for_player(new_board, mark, in_a_row) -
+                 2 * calculate_score_for_player(new_board, opp, in_a_row))
+
+        if score > best_score:
+            best_score = score
+            best_choice = choice
 
     # return a column to play: [0, configuration.columns)
-    return 0
+    return best_choice
 
 
 def test_game_over():
@@ -186,33 +229,76 @@ def tree_to_str(tree: Tree, depth=0):
 def test_grow_tree():
     board = np.array([
         [0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0, 0],
-        [1, 2, 1, 1, 2, 2, 1],
+        [2, 0, 0, 0, 0, 0, 0],
+        [2, 0, 0, 0, 0, 0, 0],
+        [2, 0, 0, 0, 0, 0, 0],
+        [1, 0, 0, 0, 0, 0, 1],
+        [2, 1, 1, 1, 0, 0, 1],
     ], dtype=np.uint8)
 
     tree = Tree([], None, 0, board, -1)
     grow_tree(tree,
               current_player=1,
               my_player=1,
-              depth=0, max_depth=2, in_a_row=4)
+              depth=0, max_depth=3, in_a_row=4)
 
     print(tree_to_str(tree, 0))
 
-    leaf = minmax(tree)
-    print(leaf.choice)
-
-    while leaf.parent:
-        print(leaf.choice, '->', end='')
-        leaf = leaf.parent
+    leaf = pick_best_move_2(tree)
 
     print(leaf.choice)
 
 
 
-test_grow_tree()
+def test_my_strat():
+    board = np.array([
+        [0, 0, 0, 0, 0, 0, 0],
+        [2, 0, 0, 0, 0, 0, 0],
+        [2, 0, 0, 0, 0, 0, 0],
+        [2, 0, 0, 0, 0, 0, 0],
+        [1, 0, 0, 0, 0, 0, 1],
+        [2, 1, 1, 1, 0, 0, 1],
+    ], dtype=np.uint8)
+    rows, columns = board.shape
+
+    mark, opp = 1, 2
+    in_a_row = 4
+
+    best_choice = -1
+    best_score = -np.inf
+    for choice in range(columns):
+        # check choice-column for free space to drop a chip
+        column = board[:, choice]
+        top_row = -1
+        for r in reversed(range(rows)):
+            if column[r] == 0:
+                top_row = r
+                break
+
+        if top_row == -1:
+            continue  # no free space in the column
+
+        new_board = board.copy()
+        new_board[top_row, choice] = mark
+
+        score = (calculate_score_for_player(new_board, mark, in_a_row) -
+                 calculate_score_for_player(new_board, opp, in_a_row))
+
+        print('score = ', score, 'board = \n', new_board)
+
+        if score > best_score:
+            best_score = score
+            best_choice = choice
+
+    print(best_choice)
+
+
+test_my_strat()
+
+
+# test_grow_tree()
+
+
 # import cProfile
 # cProfile.run('test_grow_tree()')
 

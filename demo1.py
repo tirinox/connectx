@@ -2,7 +2,7 @@ import numpy as np
 from kaggle_environments import make, evaluate
 from util import show_html
 import not_my_tree
-from functools import partial
+import my_tree_agent
 
 cx_env = make("connectx", debug=True)
 
@@ -34,7 +34,7 @@ def not_my(observation, configuration):
 
 def play_one_and_show(agent):
     cx_env = make("connectx", debug=True, configuration={
-        'timeout': 100
+        'timeout': 1000
     })
     cx_env.reset()
 
@@ -56,4 +56,4 @@ def eval(agent):
     print("CX Agent vs Negamax Agent:", final_result)
 
 
-play_one_and_show(not_my)
+play_one_and_show(my_tree_agent.agent)
