@@ -71,8 +71,18 @@ def calculate_score_for_player(board: np.ndarray, player, in_a_row):
 
         return score
 
+    def score_diagonal(board: np.ndarray, bottom_down):
+        rows, cols = board.shape
+        columns = range(in_a_row, cols) if bottom_down else range(cols - in_a_row)
+        for col in columns:
+            for row in range(rows - in_a_row)
+
+        return 0
+
     return score_calc_inner(board, player, rotated=False) + \
-           score_calc_inner(board, player, rotated=True)
+           score_calc_inner(board, player, rotated=True) + \
+           score_diagonal(board, bottom_down=True) + \
+           score_diagonal(board, bottom_down=False)
 
 
 @dataclass
@@ -249,7 +259,6 @@ def test_grow_tree():
     print(leaf.choice)
 
 
-
 def test_my_strat():
     board = np.array([
         [0, 0, 0, 0, 0, 0, 0],
@@ -294,7 +303,6 @@ def test_my_strat():
 
 
 test_my_strat()
-
 
 # test_grow_tree()
 
