@@ -2,7 +2,7 @@ import numpy as np
 from kaggle_environments import make, evaluate
 from util import show_html
 import not_my_tree
-import my_tree_agent
+import score_agent
 
 cx_env = make("connectx", debug=True)
 
@@ -56,4 +56,4 @@ def eval(agent):
     print("CX Agent vs Negamax Agent:", final_result)
 
 
-play_one_and_show(my_tree_agent.agent)
+play_one_and_show(score_agent.agent)

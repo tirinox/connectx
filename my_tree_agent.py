@@ -1,6 +1,7 @@
 import numpy as np
 from collections import namedtuple
 from dataclasses import dataclass
+import random
 
 
 def check_game_over(board: np.ndarray, in_a_row):
@@ -37,52 +38,65 @@ def check_game_over(board: np.ndarray, in_a_row):
     return test_lines(board.T)
 
 
+
 def calculate_score_for_player(board: np.ndarray, player, in_a_row):
-    def score_calc_inner(board: np.ndarray, player, rotated=True):
-        board = board.T if rotated else board
-        rows, cols = board.shape
-        normal = not rotated
-        score = 0
+    rows, cols = board.shape
 
-        support_row = [True] * cols
+    score = 0
 
-        for row_index in reversed(range(rows)):
-            row = board[row_index]
+    non_empty = board != 0
+    bottom_support = np.ones((cols,), dtype=np.bool)
+    supports = np.vstack((non_empty[1:, :], bottom_support))
 
-            for c in range(cols - in_a_row + 1):
-                my, empty, supports = 0, 0, 0
-                for k in range(c, in_a_row + c):
-                    if row[k] == player:
-                        my += 1
-                    elif row[k] == 0:
-                        empty += 1
-                    else:
-                        break
-                    if support_row[k]:
-                        supports += 1
+    def score_for_line(start_col, start_row, dx, dy, steps):
+        if steps <= 0:
+            return 0
 
-                if my + empty == in_a_row:
-                    delta = 10 ** (my - 1)
-                    if normal and supports < in_a_row:
-                        delta //= 2
-                    score += delta
+        nonlocal score
+        my, empty, supported = 0, 0, 0
 
-            support_row = row != 0
+        # b2 = np.zeros_like(board)
+        # if start_col == 1 and start_row == 2 and dx == 1 and dy == 1:
+        #     print_board(b2)
 
-        return score
+        for elem in range(in_a_row):
+            c = start_col + elem * dx
+            r = start_row + elem * dy
+            cell = board[r, c]
+            if cell == player:
+                my += 1
+                if supports[r, c]:
+                    supported += 1
+            elif cell == 0:
+                empty += 1
 
-    def score_diagonal(board: np.ndarray, bottom_down):
-        rows, cols = board.shape
-        columns = range(in_a_row, cols) if bottom_down else range(cols - in_a_row)
-        for col in columns:
-            for row in range(rows - in_a_row)
+            # b2[r, c] = 1
 
-        return 0
+        if my + empty == in_a_row and my != 0:
+            # plen = in_a_row - empty
 
-    return score_calc_inner(board, player, rotated=False) + \
-           score_calc_inner(board, player, rotated=True) + \
-           score_diagonal(board, bottom_down=True) + \
-           score_diagonal(board, bottom_down=False)
+            delta = 10 ** (in_a_row - empty - 1)
+            if my > 1 and supported < in_a_row:
+                delta //= 2
+            score += delta
+
+    for col in range(cols):
+        for row in range(rows):
+            steps_left = cols - in_a_row - col + 1
+            steps_right = col - in_a_row + 2
+            steps_down = rows - in_a_row - row + 1
+
+            score_for_line(col, row, 1, 0, steps_left)
+            score_for_line(col, row, 0, 1, steps_down)
+
+            # diagonal left+down
+            score_for_line(col, row, 1, 1, min(steps_left, steps_down))
+
+            # diagonal right+down
+            score_for_line(col, row, -1, 1, min(steps_right, steps_down))
+
+    return score
+
 
 
 @dataclass
@@ -199,6 +213,8 @@ def agent(observation, configuration):
         if score > best_score:
             best_score = score
             best_choice = choice
+        elif score == best_score:
+            best_choice = random.choice((choice, best_choice))
 
     # return a column to play: [0, configuration.columns)
     return best_choice
