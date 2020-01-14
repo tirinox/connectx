@@ -56,4 +56,5 @@ def eval(agent):
     print("CX Agent vs Negamax Agent:", final_result)
 
 
-play_one_and_show(score_agent.agent)
+# play_one_and_show(score_agent.agent)
+eval(score_agent.agent)
