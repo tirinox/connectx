@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 from kaggle_environments import make, evaluate
 from util import show_html
 import not_my_tree
@@ -43,6 +44,7 @@ def play_one_and_show(agent):
     # print(cx_env.render())
 
     r = cx_env.render(mode="html", width=650, height=650)
+
     show_html(r)
 
 
@@ -53,8 +55,18 @@ def agent_reward(rewards):
 def eval(agent):
     results = evaluate("connectx", [agent, "negamax"], num_episodes=10)
     final_result = agent_reward(results)
-    print("CX Agent vs Negamax Agent:", final_result)
+    print("my Agent vs Negamax Agent:", final_result)
 
 
-# play_one_and_show(score_agent.agent)
-eval(score_agent.agent)
+if len(sys.argv) < 2:
+    print('usage: python demo1.py command')
+    print('where command = [eval|play]')
+else:
+    command = sys.argv[1]
+
+    if command == 'eval':
+        eval(score_agent.agent)
+    elif command == 'play':
+        play_one_and_show(score_agent.agent)
+    else:
+        print('unknown command')

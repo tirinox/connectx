@@ -1,22 +1,6 @@
 import numpy as np
-from score_agent import calculate_score_for_player
-
-
-def print_board(board):
-    rows, cols = board.shape
-    s = ''
-    for r in range(rows):
-        for c in range(cols):
-            x = board[r, c]
-            if x == 2:
-                s += 'o'
-            elif x == 1:
-                s += 'x'
-            else:
-                s += '.'
-        s += '\n'
-    print(s)
-
+from score_agent import calculate_score_for_player, agent
+from util import conf_observation_from_board
 
 
 def test_score():
@@ -51,5 +35,21 @@ def test_score():
     print(calculate_score_for_player(board, 2, in_a_row=4))
 
 
+def test_score_a2():
+    board = np.array([
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0, 0],
+        [0, 0, 0, 2, 1, 0, 0],
+        [0, 0, 0, 1, 2, 0, 0],
+        [0, 0, 1, 2, 1, 2, 0],
+        [0, 2, 2, 1, 1, 2, 1],
+    ], dtype=np.uint8)
+
+    a = agent(*conf_observation_from_board(board))
+
+    print(a)
+
+
+
 if __name__ == '__main__':
-    test_score()
+    test_score_a2()

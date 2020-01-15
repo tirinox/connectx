@@ -1,6 +1,8 @@
 import numpy as np
 import random
 
+# from util import print_board
+
 
 def calculate_score_for_player(board: np.ndarray, player, in_a_row):
     rows, cols = board.shape
@@ -28,20 +30,21 @@ def calculate_score_for_player(board: np.ndarray, player, in_a_row):
             cell = board[r, c]
             if cell == player:
                 my += 1
-                if supports[r, c]:
-                    supported += 1
             elif cell == 0:
                 empty += 1
+                if supports[r, c]:
+                    supported += 1
 
             # b2[r, c] = 1
 
         if my + empty == in_a_row and my != 0:
-            # plen = in_a_row - empty
-
-            delta = 10 ** (in_a_row - empty - 1)
-            if my > 1 and supported < in_a_row:
-                delta //= 2
-            score += delta
+            if my == in_a_row:
+                score += 100000
+            else:
+                delta = 10 ** (in_a_row - empty - 1)
+                if my > 1 and supported < empty:
+                    delta //= 2
+                score += delta
 
     for col in range(cols):
         for row in range(rows):
@@ -61,6 +64,23 @@ def calculate_score_for_player(board: np.ndarray, player, in_a_row):
     return score
 
 
+def drop_a_checker(board, column_no, player):
+    # check choice-column for free space to drop a chip
+    column = board[:, column_no]
+    top_row = -1
+    for r in reversed(range(board.shape[0])):
+        if column[r] == 0:
+            top_row = r
+            break
+
+    if top_row == -1:
+        return None  # no free space in the column
+
+    new_board = board.copy()
+    new_board[top_row, column_no] = player
+    return new_board
+
+
 def agent(observation, configuration):
     columns = configuration.columns
     rows = configuration.rows
@@ -73,33 +93,35 @@ def agent(observation, configuration):
 
     current_board = np.array(board, dtype=np.uint8).reshape((rows, columns))
 
+    # print('-' * 100)
+    # print_board(current_board)
+
     best_choice = -1
     best_score = -np.inf
     for choice in range(columns):
-        # check choice-column for free space to drop a chip
-        column = current_board[:, choice]
-        top_row = -1
-        for r in reversed(range(rows)):
-            if column[r] == 0:
-                top_row = r
-                break
+        new_board_my = drop_a_checker(current_board, choice, mark)
+        if new_board_my is None:
+            continue
 
-        if top_row == -1:
-            continue  # no free space in the column
+        # print('-----')
 
-        new_board = current_board.copy()
-        new_board[top_row, choice] = mark
+        my_score = calculate_score_for_player(new_board_my, mark, in_a_row)
 
-        score = (calculate_score_for_player(new_board, mark, in_a_row) -
-                 2 * calculate_score_for_player(new_board, opp, in_a_row))
+        for opp_choice in range(columns):
+            new_board_opp = drop_a_checker(new_board_my, opp_choice, opp)
+            if new_board_opp is None:
+                continue
 
-        if score > best_score:
-            best_score = score
-            best_choice = choice
-        elif score == best_score:
-            best_choice = random.choice((choice, best_choice))
+            opp_score = calculate_score_for_player(new_board_opp, opp, in_a_row)
+            score = my_score - 2 * opp_score
+
+            # print(f'[ch={choice}/{opp_choice}] my score = {my_score}; opp score = {opp_score}; score = {score} of best {best_score}')
+
+            if score > best_score:
+                best_score = score
+                best_choice = choice
+            elif score == best_score:
+                best_choice = random.choice((choice, best_choice))
 
     # return a column to play: [0, configuration.columns)
     return best_choice
-
-
