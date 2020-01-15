@@ -103,6 +103,9 @@ def agent(observation, configuration):
         if new_board_my is None:
             continue
 
+        if np.all(new_board_my != 0):  # this is last cell
+            return choice
+
         # print('-----')
 
         my_score = calculate_score_for_player(new_board_my, mark, in_a_row)

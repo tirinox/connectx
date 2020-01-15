@@ -1,7 +1,9 @@
 import os
 import numpy as np
 import tempfile
-from unittest.mock import MagicMock as Bunch
+from munch import Munch
+
+
 
 
 def show_html(html):
@@ -31,10 +33,16 @@ def conf_observation_from_board(board, me=1, in_a_row=4):
 
     flat_board = board.reshape((rows * cols)).tolist()
 
-    config = Bunch(columns=cols, rows=rows, inarow=in_a_row)
-    observ = Bunch(mark=me, board=flat_board)
+    config = Munch()
+    config.columns = cols
+    config.rows = rows
+    config.inarow = in_a_row
 
-    return config, observ
+    observ = Munch()
+    observ.mark = me
+    observ.board = flat_board
+
+    return observ, config
 
 
 def board_reshape(board, rows, columns):
