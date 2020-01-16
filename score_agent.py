@@ -116,7 +116,7 @@ def agent(observation, configuration):
                 continue
 
             opp_score = calculate_score_for_player(new_board_opp, opp, in_a_row)
-            score = my_score - 2 * opp_score
+            score = my_score - 3 * opp_score
 
             # print(f'[ch={choice}/{opp_choice}] my score = {my_score}; opp score = {opp_score}; score = {score} of best {best_score}')
 
